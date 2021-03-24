@@ -33,9 +33,9 @@ int sanitize_environ() {
         return errno;
 
     for (char *name_val; (name_val = *env); ++env) {
-        size_t n;
-        for (n = 0; name_val[n] && name_val[n] != '='; ++n)
-            ;
+        size_t n = 0;
+        for (; name_val[n] && name_val[n] != '=';)
+            ++n;
 
         if (n+1 > N) {
             N = n+1 + 32;
@@ -64,24 +64,22 @@ int sanitize_environ() {
 }
 
 
+#define ERR(...) \
+    fprintf(stderr, "[wrzl] " __VA_ARGS__), fputc('\n', stderr), EXIT_FAILURE
+
 int main(int argc, char **argv) {
     if (argc < 1)
-        return fprintf(stderr, "[wrzl] failure: argc < 1\n"), EXIT_FAILURE;
+        return ERR("failure: argc < 1");
     if (argc < 2)
-        return fprintf(stderr, "[wrzl] usage: wrzl cmd [arg] ...\n"), EXIT_FAILURE;
+        return ERR("usage: wrzl cmd [arg] ...");
 
     if (sanitize_environ())
-        return fprintf(stderr, "[wrzl] failure: sanitize_environ\n"), EXIT_FAILURE;
+        return ERR("failure: sanitize_environ");
 
-    if (setgid(0)) {
+    if (setgid(0) || setuid(0)) {
         if (errno == EPERM)
-            return fprintf(stderr, "[wrzl] installed with insufficient privileges\n"), EXIT_FAILURE;
-        return fprintf(stderr, "[wrzl] failure: setgid\n"), EXIT_FAILURE;
-    }
-    if (setuid(0)) {
-        if (errno == EPERM)
-            return fprintf(stderr, "[wrzl] installed with insufficient privileges\n"), EXIT_FAILURE;
-        return fprintf(stderr, "[wrzl] failure: setuid\n"), EXIT_FAILURE;
+            return ERR("installed with insufficient privileges");
+        return ERR("failure: setgid");
     }
 
     fprintf(stderr, "[wrzl] Really run \33[1m\33[94m");
@@ -95,11 +93,10 @@ int main(int argc, char **argv) {
         if (argv[j+1])
             putc(' ', stderr);
     }
-    fprintf(stderr, "\33[m with elevated privileges? [y/N] ");
+    fprintf(stderr, "\33[m with elevated privileges? [Y/n] ");
     char c = getc(stdin);
-    if (c != '\n' && c != 'y' && c != 'Y') {
-        return fprintf(stderr, "[wrzl] aborting ...\n"), EXIT_FAILURE;
-    }
+    if (c != '\n' && c != 'y' && c != 'Y')
+        return ERR("[wrzl] aborting ...");
 
 
     execvp(argv[1], 1+argv);
@@ -107,6 +104,6 @@ int main(int argc, char **argv) {
 
     /* execve failed */
     if (errno == ENOENT)
-        return fprintf(stderr, "[wrzl] command not found: %s\n", argv[1]), EXIT_FAILURE;
-    return fprintf(stderr, "[wrzl] execvp failure\n"), EXIT_FAILURE;
+        return ERR("command not found: %s", argv[1]);
+    return ERR("execvp failure");
 }
