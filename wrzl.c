@@ -1,69 +1,52 @@
 /* Jonathan Frech, 2021-03-24 */
-/* wrzl -- a minimalistic alternative to sudo, doas and asroot. */
-/* Heavily inspired by asroot (see https://github.com/maandree/asroot). */
+/* wrzl - run a command with elevated privileges */
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
+#define BUF_SIZE (4096)
 extern char **environ;
 
 
-bool streq(char *s, char *z) {
-    return *s ? *s == *z && streq(1+s, 1+z) : !*z; }
-
-bool valid_environment_variable_name(char *name) {
-    static char *FILTER[] = {
-        "PATH", "COLORTERM", "EDITOR", "PWD", "SHELL", "TERM",
-    NULL, };
-
-    for (size_t j = 0; FILTER[j]; ++j)
-        if (streq(name, FILTER[j]))
-            return true;
-    return false;
-}
-
 int sanitize_environ() {
-    char **env = environ;
+    static char *filter[] = {
+        "PATH", "COLORTERM", "EDITOR", "PWD", "SHELL", "TERM", NULL};
+    static char buf[BUF_SIZE];
 
-    size_t N = 32;
-    char *name = malloc(N * sizeof *name);
-    if (!name)
-        return errno;
-
-    for (char *name_val; (name_val = *env); ++env) {
-        size_t n = 0;
-        for (; name_val[n] && name_val[n] != '=';)
-            ++n;
-
-        if (n+1 > N) {
-            N = n+1 + 32;
-            char *name_grown = realloc(name, N * sizeof *name_grown);
-            if (!name_grown)
-                return free(name), errno;
-            name = name_grown;
+    for (char **env = environ; *env; ++env) {
+        char **fil;
+        for (fil = filter; *fil; ++fil) {
+            size_t m = 0;
+            while ((*env)[m] && (*fil)[m] == (*env)[m] && (*env)[m] != '=')
+                ++m;
+            if (!(*fil)[m] && (*env)[m] == '=')
+                break;
         }
+        if (*fil)
+            continue;
 
-        for (size_t j = 0; j < n; j++)
-            name[j] = name_val[j];
-        name[n] = '\0';
-        /* char *val = n+1+name_val; */
-
-        if (!valid_environment_variable_name(name)) {
-            if (unsetenv(name))
-                return free(name), errno;
-        }
+        size_t m = 0;
+        while ((*env)[m] && (*env)[m] != '=')
+            ++m;
+        if (m+1 > BUF_SIZE)
+            return ENAMETOOLONG;
+        memcpy(buf, *env, m);
+        buf[m] = '\0';
+        if (unsetenv(buf))
+            return errno;
     }
 
-    setenv("HOME", "/root", /*override=*/ true);
-    setenv("LOGNAME", "root", /*override=*/ true);
-    setenv("USER", "root", /*override=*/ true);
+    if (setenv("HOME", "/root", /*override=*/ true)
+    ||  setenv("LOGNAME", "root", /*override=*/ true)
+    ||  setenv("USER", "root", /*override=*/ true))
+        return errno;
 
-    return free(name), EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
-
 
 #define ERR(...) \
     fprintf(stderr, "[wrzl] " __VA_ARGS__), fputc('\n', stderr), EXIT_FAILURE
