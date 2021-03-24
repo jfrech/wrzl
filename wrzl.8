@@ -1,0 +1,83 @@
+.TH WRZL 8 2021-03-24 wrzl
+
+.SH NAME
+wrzl - run a command with elevated privileges
+
+.SH SYNOPSIS
+.B wrzl
+.I cmd
+.RI [ arg "] ..."
+
+.SH DESCRIPTION
+.B wrzl
+sanitizes its environment variables, leaving only
+.BR PATH ", " COLORTERM ", " EDITOR ", " PWD ", " SHELL " and " TERM
+as-is, usetting all others. Furthermore,
+.BR HOME=/root ", " LOGNAME=root " and " USER=root
+are set.
+.PP
+A yes-leaning confirmation prompt is issued and on success, the given
+.I cmd
+is run with elevated privileges. No authentication apart from the
+.B
+wrzl
+executable's file permissions is performed, where only users from the
+.B wheel
+group may run
+.BR wrzl .
+
+.SH STDOUT, STDERR, STDIN
+.B wrzl
+writes to
+.B stderr
+to ask for confirmation as well as for reporting failure. After a successful
+.I cmd
+invocation, all three standard file descriptors are in the hands of
+.IR cmd .
+
+.SH EXIT STATUS
+On failure,
+.B wrzl
+returns the
+.B EXIT_FAILURE
+status. On success, the run
+.IR cmd 's
+exit status is relayed.
+
+.SH PHILOSOPHY
+In a world in which most software gets feature-injected each release cycle, detaching users further and further from their software's identity by a constructed veil of unrecognizable functionality, one longs for program transparency on all levels. A quite promising approach to reconcile the above described unfortunate reality is paying close attention to one's language and source code's length:
+.B wrzl
+is written in
+.B 110
+lines of
+.B C
+and installed using a
+.B 15
+lines long
+.BR Makefile .
+
+.SH ACKNOWLEDGMENTS
+I thank
+.B Mattias Andrée
+for writing
+.B asroot
+.RI < https://github.com/maandree/asroot >,
+a privilege elevation utility requiring password-based authentication which inspired me to write
+.BR wrzl .
+
+.SH SEE ALSO
+.BR asroot (8),
+.BR sudo (8),
+.BR su (1)
+
+.SH SOURCE
+.B wrzl
+is hosted on GitHub
+.RI < https://github.com/jfrech/wrzl >
+and licensed under the
+.B Expat / MIT License
+.RI < https://www.gnu.org/licenses/license-list.html#Expat >.
+
+.SH AUTHOR
+Jonathan Frech
+.RI < https://www.jfrech.com >

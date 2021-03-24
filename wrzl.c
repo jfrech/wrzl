@@ -1,5 +1,6 @@
 /* Jonathan Frech, 2021-03-24 */
-/* wrzl -- a minimalistic alternative to sudo, doas and asroot */
+/* wrzl -- a minimalistic alternative to sudo, doas and asroot. */
+/* Heavily inspired by asroot (see https://github.com/maandree/asroot). */
 
 #include <errno.h>
 #include <stdbool.h>
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "\33[m with elevated privileges? [Y/n] ");
     char c = getc(stdin);
     if (c != '\n' && c != 'y' && c != 'Y')
-        return ERR("[wrzl] aborting ...");
+        return ERR("aborting ...");
 
 
     execvp(argv[1], 1+argv);
