@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
     execvp(argv[1], 1+argv);
 
 
-    /* execve failed */
+    /* execvp failed */
     if (errno == ENOENT)
         return ERR("command not found: %s", argv[1]);
     return ERR("execvp failure");
